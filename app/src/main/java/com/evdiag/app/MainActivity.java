@@ -7,6 +7,7 @@ import android.view.KeyEvent;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -20,7 +21,6 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // True fullscreen — no status bar, no title bar
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(
             WindowManager.LayoutParams.FLAG_FULLSCREEN,
@@ -29,9 +29,11 @@ public class MainActivity extends Activity {
 
         setContentView(R.layout.activity_main);
 
+        // Enable WebView debugging (remove for production)
+        WebView.setWebContentsDebuggingEnabled(false);
+
         webView = findViewById(R.id.webview);
 
-        // WebView settings
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
@@ -41,28 +43,28 @@ public class MainActivity extends Activity {
         settings.setDisplayZoomControls(false);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        // CACHE_ONLY — ใช้ไฟล์ใน assets ไม่ต้องการอินเตอร์เน็ต
+        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
         settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
-        // Stay within the WebView (don't open external browser)
         webView.setWebViewClient(new WebViewClient() {
             @Override
-            public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                view.loadUrl(url);
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String url = request.getUrl().toString();
+                // Block external URLs (Google Fonts etc.) — ป้องกัน timeout crash
+                if (url.startsWith("file://") || url.startsWith("about:")) {
+                    view.loadUrl(url);
+                }
                 return true;
             }
         });
 
         webView.setWebChromeClient(new WebChromeClient());
-
-        // Add JavaScript interface so the HTML's "Exit" button can close the app
         webView.addJavascriptInterface(new AppInterface(this), "AndroidApp");
-
-        // Load from assets
         webView.loadUrl("file:///android_asset/ev_diagnostic_web.html");
     }
 
-    // Handle back button — navigate WebView history or exit
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK) {
@@ -77,20 +79,9 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    protected void onPause() {
-        super.onPause();
-        webView.onPause();
-    }
-
+    protected void onPause() { super.onPause(); webView.onPause(); }
     @Override
-    protected void onResume() {
-        super.onResume();
-        webView.onResume();
-    }
-
+    protected void onResume() { super.onResume(); webView.onResume(); }
     @Override
-    protected void onDestroy() {
-        webView.destroy();
-        super.onDestroy();
-    }
+    protected void onDestroy() { webView.destroy(); super.onDestroy(); }
 }

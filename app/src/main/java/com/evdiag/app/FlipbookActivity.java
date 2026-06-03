@@ -7,6 +7,7 @@ import android.view.KeyEvent;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -15,7 +16,7 @@ public class FlipbookActivity extends Activity {
 
     private WebView webView;
 
-    @SuppressLint({"SetJavaScriptEnabled"})
+    @SuppressLint({"SetJavaScriptEnabled", "JavascriptInterface"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -26,7 +27,7 @@ public class FlipbookActivity extends Activity {
             WindowManager.LayoutParams.FLAG_FULLSCREEN
         );
 
-        setContentView(R.layout.activity_main); // same layout — just a WebView
+        setContentView(R.layout.activity_main);
 
         webView = findViewById(R.id.webview);
 
@@ -39,19 +40,23 @@ public class FlipbookActivity extends Activity {
         settings.setDisplayZoomControls(false);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
         settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
-            public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                view.loadUrl(url);
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String url = request.getUrl().toString();
+                if (url.startsWith("file://") || url.startsWith("about:")) {
+                    view.loadUrl(url);
+                }
                 return true;
             }
         });
+
         webView.setWebChromeClient(new WebChromeClient());
         webView.addJavascriptInterface(new AppInterface(this), "AndroidApp");
-
         webView.loadUrl("file:///android_asset/ev_diagnostic_flipbook.html");
     }
 
